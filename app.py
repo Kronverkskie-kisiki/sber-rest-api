@@ -1,8 +1,9 @@
-from typing import Any
+from typing import Any, Dict
 from flask import Flask, jsonify, request
 import grpc
 import check_pb2
 import check_pb2_grpc
+from enum import Enum
 
 app = Flask(__name__)
 
@@ -35,14 +36,14 @@ def send_data_to_econ_service(data):
             )
         )
     return {
-            "passport": response.passport,
-            "registration": response.registration,
-            "residence": response.residence,
-            "presence_of_children": response.presence_of_children,
-            "job": response.job,
-            "salary": response.salary,
-            "bride_price": response.bride_price,
-            "saving": response.saving,
+        "passport": response.passport,
+        "registration": response.registration,
+        "residence": response.residence,
+        "presence_of_children": response.presence_of_children,
+        "job": response.job,
+        "salary": response.salary,
+        "bride_price": response.bride_price,
+        "saving": response.saving,
     }
 
 
@@ -58,7 +59,78 @@ def doubtful_error(value: Any, message: str):
     return {"value": value, "status": STATUS_ERROR, "message": message}
 
 
-def call_microservice(id: str):
+class CreditHistoryStatus(str, Enum):
+    NONE = "NONE"
+    BAD = "BAD"
+    MEDIUM = "MEDIUM"
+    GOOD = "GOOD"
+
+
+class MainIncomeType(str, Enum):
+    MAIN_WORK = "MAIN_WORK"
+    BUSINESS = "BUSINESS"
+    PENSION = "PENSION"
+    OTHER = "OTHER"
+
+
+class MaritalStatus(str, Enum):
+    SINGLE = "SINGLE"
+    MARRIED = "MARRIED"
+    DIVORCED = "WIDOW"
+
+
+# export enum CreditHistoryStatus {
+#   NONE = 'NONE',
+#   BAD = 'BAD',
+#   MEDIUM = 'MEDIUM',
+#   GOOD = 'GOOD'
+# }
+#
+# export enum MainIncomeType {
+#   MAIN_WORK = 'MAIN_WORK',
+#   BUSINESS = 'BUSINESS',
+#   PENSION = 'PENSION',
+#   OTHER = 'OTHER'
+# }
+#
+# export type RiskScore<T> = {
+#   value: T;
+#   scorePoints: number;
+# }
+#
+# export type RiskInfo = {
+#   readonly id: RiskScore<string>;
+#   readonly maritalStatus: RiskScore<MaritalStatus>;
+#   readonly haveChildren: RiskScore<boolean>;
+#   readonly creditHistory: RiskScore<CreditHistoryStatus>;
+#   readonly mainIncomeType: RiskScore<MainIncomeType>;
+#   readonly currentJobSeniority: RiskScore<number>;
+#   readonly debtBurdenIndicator: RiskScore<number>; // Показатель долговой нагрузки
+#   readonly totalIncome: RiskScore<number>;
+#   readonly haveSavingsAccount: RiskScore<number>;
+# }
+
+
+def risk(number: int, param: Any):
+    return {"scorePoints": number, "value": param}
+
+
+def calculate_risks(id: str) -> dict[str, Any]:
+    risks = {
+        "id": id,
+        "marital_status": risk(3, MaritalStatus.SINGLE),
+        "have_children": risk(5, True),
+        "credit_history": risk(1, CreditHistoryStatus.GOOD),
+        "main_income_type": risk(2, MainIncomeType.MAIN_WORK),
+        "current_job_seniority": risk(3, 4),
+        "debt_burden_indicator": risk(3, 0.2),
+        "total_income": risk(7, 50000),
+        "have_savings_account": risk(3, 1),
+    }
+    return risks
+
+
+def validate_personal_info(id: str):
     profile_data = {
         "id": "123",
         "firstName": {"value": "John", "status": "OK"},
@@ -106,6 +178,15 @@ def call_microservice(id: str):
     return [profile_data_wrong]
 
 
+@app.route("/api/get_risk_info", methods=["GET"])
+def get_risk_info():
+    id = request.args.get("id")
+    if id is None:
+        return jsonify({"error": "Id not provided in request args"}), 500
+
+    return jsonify(calculate_risks(id))
+
+
 @app.route("/api/get_profile_info", methods=["GET"])
 def get_profile_info():
     id = request.args.get("id")
@@ -118,7 +199,7 @@ def get_profile_info():
     if id is None:
         return jsonify({"error": "Id not provided in request args"}), 500
 
-    return jsonify(call_microservice(id))
+    return jsonify(validate_personal_info(id))
 
 
 if __name__ == "__main__":

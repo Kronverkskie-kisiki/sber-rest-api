@@ -5,8 +5,6 @@ services:
     container_name: sber-rest-api
     build: .
     ports:
-      - "5005:5005"
+      - "6005:6005"
     volumes:
       - .:/app
-    command: bash -c "python app.py & python econ_service.py"
-
