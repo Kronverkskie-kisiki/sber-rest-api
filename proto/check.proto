@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package econ;
+
+message ValidationRequest {
+  string passport = 1;
+  string registration = 2;
+  string residence = 3;
+  string presence_of_children = 4;
+  string job = 5;
+  string salary = 6;
+  string bride_price = 7;
+  string saving = 8;
+}
+
+message ValidationResponse {
+  bool passport = 1;
+  bool registration = 2;
+  bool residence = 3;
+  bool presence_of_children = 4;
+  bool job = 5;
+  bool salary = 6;
+  bool bride_price = 7;
+  bool saving = 8;
+}
+
+service ValidationService { rpc ProcessData(ValidationRequest) returns (ValidationResponse); }

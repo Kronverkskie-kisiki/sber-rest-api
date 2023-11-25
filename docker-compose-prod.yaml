@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  sber-rest-api:
+    container_name: sber-rest-api
+    hostname: sber-rest-api
+    build: .
+    volumes:
+      - .:/app
+    network_mode: internal-net
