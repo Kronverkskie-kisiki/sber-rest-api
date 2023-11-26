@@ -2,9 +2,10 @@ version: '3'
 
 services:
   sber-rest-api:
-    container_name: sber-rest-api
+    container_name: sber-rest-api1
     build: .
     ports:
-      - "6005:6005"
+      - "5005:5005"
     volumes:
       - .:/app
+    command: bash -c "python app.py & python econ_service.py"

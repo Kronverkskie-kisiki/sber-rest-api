@@ -4,6 +4,7 @@ import grpc
 import check_pb2
 import check_pb2_grpc
 from enum import Enum
+import requests
 
 app = Flask(__name__)
 
@@ -14,8 +15,8 @@ STATUS_ERROR = "ERROR"
 APP_PORT = 5005
 APP_HOST = "0.0.0.0"
 
-# JSON-RPC endpoint of the external microservice
-MICROSERVICE_ENDPOINT = "http://microservice.example.com/rpc"
+MICROSERVICE_GIGACHAT = "http://gigachat-api:5000"
+MICROSERVICE_VK = "http://sber-vk-api:8080"
 
 ECON_SERVICE_ADDRESS = "localhost:5001"
 
@@ -77,38 +78,6 @@ class MaritalStatus(str, Enum):
     SINGLE = "SINGLE"
     MARRIED = "MARRIED"
     DIVORCED = "WIDOW"
-
-
-# export enum CreditHistoryStatus {
-#   NONE = 'NONE',
-#   BAD = 'BAD',
-#   MEDIUM = 'MEDIUM',
-#   GOOD = 'GOOD'
-# }
-#
-# export enum MainIncomeType {
-#   MAIN_WORK = 'MAIN_WORK',
-#   BUSINESS = 'BUSINESS',
-#   PENSION = 'PENSION',
-#   OTHER = 'OTHER'
-# }
-#
-# export type RiskScore<T> = {
-#   value: T;
-#   scorePoints: number;
-# }
-#
-# export type RiskInfo = {
-#   readonly id: RiskScore<string>;
-#   readonly maritalStatus: RiskScore<MaritalStatus>;
-#   readonly haveChildren: RiskScore<boolean>;
-#   readonly creditHistory: RiskScore<CreditHistoryStatus>;
-#   readonly mainIncomeType: RiskScore<MainIncomeType>;
-#   readonly currentJobSeniority: RiskScore<number>;
-#   readonly debtBurdenIndicator: RiskScore<number>; // Показатель долговой нагрузки
-#   readonly totalIncome: RiskScore<number>;
-#   readonly haveSavingsAccount: RiskScore<number>;
-# }
 
 
 def risk(number: int, param: Any):
@@ -200,6 +169,43 @@ def get_profile_info():
         return jsonify({"error": "Id not provided in request args"}), 500
 
     return jsonify(validate_personal_info(id))
+
+
+@app.route("/api/loan_rating", methods=["POST"])
+def loan_rating():
+    response = requests.post(MICROSERVICE_GIGACHAT + "/api/loan_rating")
+    response.raise_for_status()
+    json_rpc_response = response.json()
+    app.logger.info(json_rpc_response)
+    return jsonify(json_rpc_response)
+
+
+@app.route("/api/vk_friends", methods=["POST"])
+def vk_friends():
+    vk_id = request.get_json().get("userId")
+    friends = requests.get(MICROSERVICE_VK + "/api/v1/vk/get_friends/" + vk_id)
+    friends.raise_for_status()
+    response = requests.post(
+        MICROSERVICE_GIGACHAT + "/api/vk_friends",
+        json={"friends_info": friends.content.decode("utf-8")},
+    )
+    response.raise_for_status()
+    json_rpc_response = response.json()
+    return jsonify(json_rpc_response)
+
+
+@app.route("/api/vk_analisis", methods=["POST"])
+def vk_analisis():
+    vk_id = request.get_json().get("userId")
+    friends = requests.get(MICROSERVICE_VK + "/api/v1/vk/get_profile/" + vk_id)
+    friends.raise_for_status()
+    response = requests.post(
+        MICROSERVICE_GIGACHAT + "/api/vk_analisis",
+        json={"profile_info": friends.content.decode("utf-8")},
+    )
+    response.raise_for_status()
+    json_rpc_response = response.json()
+    return jsonify(json_rpc_response)
 
 
 if __name__ == "__main__":
